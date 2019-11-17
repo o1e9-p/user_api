@@ -1,0 +1,34 @@
+version: '3.1'
+services:
+  # other services
+
+  mysql:
+    container_name: flask_mysql
+    restart: always
+    image: mysql:5.7
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: '1234abc'
+      MYSQL_USER: 'test'
+      MYSQL_PASS: 'pass'
+      MYSQL_DATABASE: 'books'
+    volumes:
+    - /var/lib/mysql
+    ports:
+    - "3306:3306"
+
+  redis:
+    container_name: redis
+    restart: always
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  app:
+    container_name: api
+    restart: always
+    image: legendoleg/node-api:v1
+    ports:
+    - "8000:3000"
+    links:
+      - redis
