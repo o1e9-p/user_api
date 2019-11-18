@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "dependencies": {
     "babel": "^6.23.0",
     "babel-cli": "^6.26.0",
@@ -14,14 +15,15 @@
     "koa-router": "^7.4.0",
     "mysql": "^2.17.1",
     "redis": "^2.8.0",
-    "rimraf": "^2.6.3"
+    "rimraf": "^3.0.0",
+    "uuid": "^3.3.3"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "mocha": "^6.1.4"
+    "chai": "4.2.0",
+    "mocha": "6.1.4"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run build && mocha dist/src/**/*.test.js",
     "start": "npm run build && node ./dist/index.js",
     "db": "npm run build && node ./dist/models/product.js",
     "build": "rimraf dist/ && babel ./ --out-dir dist/ --ignore ./node_modules,./.babelrc,./package.json --copy-files"

@@ -1,6 +1,6 @@
 import Koa from 'koa';
-import err from './middleware/error';
-import {routes, allowedMethods} from './middleware/routes';
+import err from './src/middleware/error';
+import {routes, allowedMethods} from './src/middleware/routes';
 require('dotenv').config();
 
 
