@@ -6,13 +6,14 @@ let instance = null;
 module.exports = class MySql {
     constructor(connection) {
         this.connection = connection;
+        this.escape = connection.escape.bind(connection);
         connection.connect();
     }
 
     async query(query) {
         console.log(query);
         return new Promise((res, rej) => {
-            this.connection.query(query, (err, results) => {
+            this.connection.queryBuilder(query, (err, results) => {
                 if (err) {
                     rej(err);
                     console.log(err);

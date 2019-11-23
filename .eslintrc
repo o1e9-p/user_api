@@ -8,11 +8,7 @@
         "ecmaVersion": 2018
     },
     "plugins": [
-        "deprecate",
-        "security"
-    ],
-    "extends": [
-        "plugin:security/recommended"
+        "deprecate"
     ],
     "rules": {
         "strict": "error",

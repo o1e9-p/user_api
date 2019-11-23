@@ -1,8 +1,6 @@
 'use strict';
 
 const Router = require('koa-router');
-const convert = require('koa-convert');
-const KoaBody = require('koa-body');
 const BooksService = require('../books/booksService');
 const Mysql = require('../adapters/mySql');
 const AuthorService = require('../author/authorService');
@@ -10,13 +8,16 @@ const AuthorService = require('../author/authorService');
 const mysql = Mysql.getInstance();
 const booksService = new BooksService(mysql);
 const authorService = new AuthorService(mysql);
+const convert = require('koa-convert');
+const KoaBody = require('koa-body');
+
+const koaBody = convert(KoaBody());
 
 const router = new Router();
-const koaBody = convert(KoaBody());
 
 router
     .get('/books', async (ctx, next) => {
-        const result = await booksService.get(ctx.query);
+        const result = await booksService.get(ctx.queryBuilder);
         if (result) {
             ctx.body = result;
         } else {

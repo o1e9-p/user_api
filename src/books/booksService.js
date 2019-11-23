@@ -9,14 +9,16 @@ module.exports = class BooksService {
     constructor(db) {
         this.db = db;
         this.authorService = new AuthorService(db);
+        this.queryBuilder = new QueryBuilder(this.db.escape);
     }
 
     async get(data) {
-        const query = QueryBuilder.select(data);
+        const query = this.queryBuilder.select(data);
         try {
             const results = await this.db.query(query);
             return results.map(result => new BookDTO(result));
         } catch (e) {
+            console.error(e);
             throw e;
         }
     }
@@ -24,27 +26,32 @@ module.exports = class BooksService {
     async create(data) {
         const book = new BookEntity(data);
         const author = new AuthorEntity(data);
+        const transaction = new Transaction(this.db);
+
         try {
             let result;
             const existsAuthor = await this.authorService.getIfExists(author);
             const queries = existsAuthor
-                ? QueryBuilder.insertBook(book, existsAuthor.id)
-                : QueryBuilder.insertAuthorAndBook(book, author);
+                ? this.queryBuilder.insertBook(book, existsAuthor.id)
+                : this.queryBuilder.insertAuthorAndBook(book, author);
 
-            await this._startTransactionQuery();
+            await transaction.start();
+
             for (const str of queries) {
                 result = await this.db.query(str);
             }
-            await this._finishTransactionQuery();
 
+            await transaction.stop();
+            console.log(result[0]);
             return new BookDTO(result[0]);
         } catch (e) {
+            console.error(e);
             throw e;
         }
     }
 
     async update(id, params) {
-        const queries = QueryBuilder.update(id, params);
+        const queries = this.queryBuilder.update(id, params);
         try {
             let result;
             await this._startTransactionQuery();
@@ -54,6 +61,7 @@ module.exports = class BooksService {
             await this._finishTransactionQuery();
             return new BookDTO(result[0]);
         } catch (e) {
+            console.error(e);
             throw e;
         }
     }
@@ -63,42 +71,62 @@ module.exports = class BooksService {
         try {
             await this.db.query(query);
         } catch (e) {
+            console.error(e);
             throw e;
         }
     }
+};
 
-    _startTransactionQuery() {
+class Transaction {
+    constructor(db) {
+        this.db = db;
+    }
+
+    async start() {
         return this.db.query('BEGIN;');
     }
 
-    _finishTransactionQuery() {
+    async stop() {
         return this.db.query('COMMIT;');
     }
-};
+}
 
 class QueryBuilder {
-    static insertAuthorAndBook(book, author) {
+    constructor(escape) {
+        this.escape = escape;
+    }
+    insertAuthorAndBook(book, { firstName, lastName }) {
+        const lastInsertId = 'LAST_INSERT_ID()';
         return [
-            `INSERT INTO authors (first_name,last_name) VALUES ('${author.firstName}', '${author.lastName}');`,
-            `INSERT INTO books (title,date,author,description,image) VALUES ('${book.title}', '${book.date}', ` +
-        `LAST_INSERT_ID(), '${book.description}', '${book.image}');`,
-            'SELECT * FROM books INNER JOIN authors on books.author = authors.id WHERE books.id = LAST_INSERT_ID();',
+            `INSERT INTO authors SET first_name = ${this.escape(firstName)}, last_name = ${this.escape(lastName)};`,
+            this._buildBookInsert(book, lastInsertId),
+            QueryBuilder._buildBookSelect(),
         ];
     }
 
-    static insertBook(book, authorId) {
-        return [
-            `INSERT INTO books (title,date,author,description,image) VALUES ('${book.title}', '${book.date}', ` +
-        `${authorId}, '${book.description}', '${book.image}');`,
-            'SELECT * FROM books INNER JOIN authors on books.author = authors.id WHERE books.id = LAST_INSERT_ID();',
-        ];
+    insertBook(book, authorId) {
+        return [this._buildBookInsert(book, authorId), QueryBuilder._buildBookSelect()];
     }
 
-    static select({ limit, offset, fields, sort, title, date, authorFirstName, authorLastName, description, image }) {
+    _buildBookInsert({ title, date, description, image }, author) {
+        return (
+            `INSERT INTO books SET title = ${this.escape(title)}, date = ${this.escape(date)}, ` +
+      `author = ${author}, description = ${this.escape(description)}, image = ${this.escape(image)};`
+        );
+    }
+
+    static _buildBookSelect() {
+        return (
+            'SELECT b.id, title, date, author, description, image, first_name, last_name ' +
+      'FROM books as b INNER JOIN authors as a on b.author = a.id WHERE b.id = LAST_INSERT_ID();'
+        );
+    }
+
+    select({ limit, offset, fields, sort, title, date, authorFirstName, authorLastName, description, image }) {
         let query = 'SELECT ';
 
         if (fields) {
-            query += QueryBuilder._addFields(fields);
+            query += this._addFields(fields);
         } else {
             query += '*';
         }
@@ -106,49 +134,51 @@ class QueryBuilder {
         query += ' FROM books INNER JOIN authors on books.author = authors.id ';
 
         if (title || date || authorFirstName || authorLastName || description || image) {
-            query += QueryBuilder._addFilter(title, date, authorFirstName, authorLastName, description, image);
+            query += this._addFilter(title, date, authorFirstName, authorLastName, description, image);
         }
 
         if (sort) {
-            query += QueryBuilder._addSort(sort);
+            query += this._addSort(sort);
         }
 
         query += QueryBuilder._addLimitOffset(limit, offset);
-
         query += ';';
 
         return query;
     }
 
-    static update(id, { title, date, authorFirstName, authorLastName, description, image }) {
+    update(id, { title, date, authorFirstName, authorLastName, description, image }) {
         let query = 'UPDATE books SET ';
 
         if (typeof title === 'string') {
-            query += `title = '${title}', `;
+            query += `title = '${this.escape(title)}', `;
         }
         if (typeof date === 'string') {
-            query += `date = '${date}', `;
+            query += `date = '${this.escape(date)}', `;
         }
         if (typeof authorFirstName === 'string') {
-            query += `first_name = '${authorFirstName}', `;
+            query += `first_name = '${this.escape(authorFirstName)}', `;
         }
         if (typeof authorLastName === 'string') {
-            query += `last_name = '${authorLastName}', `;
+            query += `last_name = '${this.escape(authorLastName)}', `;
         }
         if (typeof description === 'string') {
-            query += `description = '${description}', `;
+            query += `description = '${this.escape(description)}', `;
         }
         if (typeof image === 'string') {
-            query += `image = '${image}', `;
+            query += `image = '${this.escape(image)}', `;
         }
 
         query = query.substring(0, query.length - 2);
-        query += ` WHERE id = '${id}';`;
+        query += ` WHERE id = '${this.escape(id)}';`;
 
-        return [query, `SELECT * FROM books INNER JOIN authors on books.author = authors.id WHERE books.id = ${id};`];
+        return [
+            query,
+            `SELECT * FROM books INNER JOIN authors on books.author = authors.id WHERE books.id = ${this.escape(id)};`,
+        ];
     }
 
-    static _addFields(fields) {
+    _addFields(fields) {
         let str = 'books.id, ';
         let index = fields.indexOf('authorFirstName');
 
@@ -161,23 +191,24 @@ class QueryBuilder {
             fields[index] = 'last_name';
         }
 
-        str += Array.isArray(fields) ? fields.join(', ') : fields;
+        const escapedFields = fields.map(field => this.escape(field));
+        str += Array.isArray(escapedFields) ? escapedFields.join(', ') : escapedFields;
 
         return str;
     }
 
-    static _addFilter(title, date, authorFirstName, authorLastName, description, image) {
+    _addFilter(title, date, authorFirstName, authorLastName, description, image) {
         let str = '';
 
         if (typeof title === 'string') {
-            str += `title = '${title}', `;
+            str += `title = '${this.escape(title)}', `;
         }
 
         if (typeof date === 'string') {
             const ex = date.replace(/[^<>=]+/g, '');
 
             if (!date.replace(/[0-9,\-\s<>=]+/g, '')) {
-                str += `date ${ex.length ? ex : '='} '${date.substring(ex.length).trim()}', `;
+                str += `date ${ex.length ? ex : '='} '${this.escape(date.substring(ex.length).trim())}', `;
             } else {
                 throw new Error('wrong date field ');
             }
@@ -185,7 +216,7 @@ class QueryBuilder {
 
         if (typeof authorFirstName === 'string') {
             if (!authorFirstName.replace(/[a-zA-Z,\s<>=]+/g, '')) {
-                str += `authors.first_name = '${authorFirstName}', `;
+                str += `authors.first_name = '${this.escape(authorFirstName)}', `;
             } else {
                 throw new Error('wrong authorFirstName field ');
             }
@@ -193,18 +224,18 @@ class QueryBuilder {
 
         if (typeof authorLastName === 'string') {
             if (!authorFirstName.replace(/[a-zA-Z,\s<>=]+/g, '')) {
-                str += `authors.lsat_name = '${authorLastName}', `;
+                str += `authors.lsat_name = '${this.escape(authorLastName)}', `;
             } else {
                 throw new Error('wrong authorLastName field ');
             }
         }
 
         if (typeof description === 'string') {
-            str += `description = '${description}', `;
+            str += `description = '${this.escape(description)}', `;
         }
 
         if (typeof image === 'string') {
-            str += `image = '${image}', `;
+            str += `image = '${this.escape(image)}', `;
         }
 
         str = str.substring(0, str.length - 2) + ' ';
@@ -212,16 +243,12 @@ class QueryBuilder {
         return str.length > 1 ? 'WHERE ' + str : '';
     }
 
-    static _addSort(sort) {
-        if (!isNaN(Number(sort))) {
-            throw new Error('\'sort\' is not a string\'');
-        }
-
+    _addSort(sort) {
         if (sort[0] === '-') {
-            return `ORDER BY ${sort.substring(1)} DESC `;
+            return `ORDER BY ${this.escape(sort.substring(1))} DESC `;
         }
 
-        return `ORDER BY ${sort} `;
+        return `ORDER BY ${this.escape(sort)} `;
     }
 
     static _addLimitOffset(limit = '100', offset = '0') {
