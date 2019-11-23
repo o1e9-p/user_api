@@ -1,14 +1,16 @@
-import {stub} from 'sinon';
-import chai from 'chai';
+'use strict';
 
-import MySql from '../adapters/mySql'
+const { stub } = require('sinon');
+const MySql = require('../adapters/mySql');
 
 describe('src/middleware/routes', function () {
-  beforeEach(function () {
-    this.queryStub = stub(MySql, 'query');
-  });
+    beforeEach(function () {
+        this.queryStub = stub(MySql, 'query');
+    });
 
-  describe('create', function () {
-    this.queryStub.resolves()
-  })
+    describe('create', function () {
+        beforeEach(function () {
+            this.queryStub.resolves();
+        });
+    });
 });

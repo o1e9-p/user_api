@@ -1,13 +1,15 @@
-export default class AuthorDTO {
-  constructor(firstName, lastName, id) {
-    if (id) {
-      this.id = id;
+'use strict';
+
+module.exports = class AuthorDTO {
+    constructor(firstName, lastName, id) {
+        if (id) {
+            this.id = id;
+        }
+        if (firstName) {
+            this.firstName = firstName;
+        }
+        if (firstName) {
+            this.lastName = lastName;
+        }
     }
-    if (firstName) {
-      this.firstName = firstName;
-    }
-    if (firstName) {
-      this.lastName = lastName;
-    }
-  }
-}
+};
