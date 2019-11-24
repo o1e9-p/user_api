@@ -17,6 +17,9 @@ services:
     ports:
       - "3306:3306"
 
+  redis-server:
+    image: 'redis'
+
   app:
     build: .
     command: npm run start
@@ -32,3 +35,5 @@ services:
       DB_USER: 'root'
       DB_PWD: '1234abc'
       DB_NAME: 'books'
+      REDIS_HOST: 'redis-server'
+      REDIS_PORT: '6379'

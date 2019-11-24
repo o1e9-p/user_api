@@ -3,19 +3,13 @@
 const redis = require('redis');
 const { promisify } = require('util');
 
+let instance = null;
+
 module.exports = class Redis {
-    constructor() {
-        this.client = null;
-        this._connect();
+    constructor(client) {
+        this.client = client;
         this.set = promisify(this.client.set);
         this.get = promisify(this.client.get);
-    }
-
-    _connect() {
-        this.client = redis.createClient({
-            host: process.env.REDIS_HOST,
-            port: process.env.REDIS_PORT,
-        });
     }
 
     exists(key) {
@@ -40,5 +34,17 @@ module.exports = class Redis {
 
     flushall() {
         this.client.flushall();
+    }
+
+    static getInstance() {
+        if (!instance) {
+            const client = redis.createClient({
+                host: process.env.REDIS_HOST,
+                port: process.env.REDIS_PORT,
+            });
+            instance = new Redis(client);
+        }
+
+        return instance;
     }
 };

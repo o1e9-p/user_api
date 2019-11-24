@@ -1,51 +1,22 @@
 'use strict';
 
 const Router = require('koa-router');
-const BooksService = require('../books/booksService');
-const Mysql = require('../adapters/mySql');
-const AuthorService = require('../author/authorService');
-
-const mysql = Mysql.getInstance();
-const booksService = new BooksService(mysql);
-const authorService = new AuthorService(mysql);
+const Redis = require('../adapters/redis');
 const convert = require('koa-convert');
 const KoaBody = require('koa-body');
+const Cache = require('./cache');
+const { getHandler, insertHandler, updateHandler, deleteBookHandler, deleteAuthorHandler } = require('./handelers');
 
 const koaBody = convert(KoaBody());
-
 const router = new Router();
+const cache = new Cache(Redis.getInstance());
 
 router
-    .get('/books', async (ctx, next) => {
-        const result = await booksService.get(ctx.query);
-        if (result && result.length) {
-            ctx.body = result;
-        } else {
-            ctx.status = 404;
-        }
-    })
-    .post('/books', koaBody, async (ctx, next) => {
-        const result = await booksService.create(ctx.request.body);
-        ctx.status = 201;
-        ctx.body = result;
-    })
-    .post('/books/:id', koaBody, async (ctx, next) => {
-        const result = await booksService.update(ctx.params.id, ctx.request.body);
-
-        if (result) {
-            ctx.body = result;
-        } else {
-            ctx.status = 404;
-        }
-    })
-    .delete('/books/:id', async (ctx, next) => {
-        await booksService.delete(ctx.params.id);
-        ctx.status = 204;
-    })
-    .delete('/author/:id', async (ctx, next) => {
-        await authorService.delete(ctx.params.id);
-        ctx.status = 204;
-    });
+    .get('/books', cache.getIfExist, cache.deleteReq, getHandler, cache.set)
+    .post('/books', koaBody, insertHandler, cache.set)
+    .post('/books/:id', koaBody, updateHandler, cache.set)
+    .delete('/books/:id', deleteBookHandler, cache.deleteBook)
+    .delete('/author/:id', deleteAuthorHandler, cache.deleteAuthor);
 
 exports.routes = function routes() {
     return router.routes();
