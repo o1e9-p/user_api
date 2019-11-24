@@ -3,6 +3,25 @@ http-server на базе фреймворка Koa2 </br>
 База данных - MySql</br>
 Кэш - Redis</br>
 
+    CREATE TABLE books (
+        `id` MEDIUMINT AUTO_INCREMENT PRIMARY KEY,
+        `title` VARCHAR(100),
+        `date` DATE,
+        `author` VARCHAR(30),
+        `description` VARCHAR(255),
+        `image` VARCHAR(255)
+        `date_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `date_updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE authors (
+        `id` MEDIUMINT AUTO_INCREMENT PRIMARY KEY,
+        `first_name` VARCHAR(30),
+        `last_name` VARCHAR(30),
+        `date_created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `date_updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
 
     /books
     get:
@@ -24,16 +43,16 @@ http-server на базе фреймворка Koa2 </br>
       description: Add a new document
       body:
          application/x-www-form-urlencoded
-           formParameters:  
+           formParameters:
               title:
                 description: The name of the book
                 type: string
                 required: true
-              autor: 
+              autor:
                 description: The name of the author
                 type: string
                 required: true
-              description: 
+              description:
                 type: string
                 required: true
               date:
@@ -44,20 +63,20 @@ http-server на базе фреймворка Koa2 </br>
                 type: string
                 required: true
 
-    put:
-      /{documentId}
+    post:
+      /{bookId}
         description: Update a document
         body:
-          formParameters:  
+          formParameters:
               title:
                 description: The name of the book
                 type: string
                 required: false
-              autor: 
+              autor:
                 description: The name of the author
                 type: string
                 required: false
-              description: 
+              description:
                 type: string
                 required: false
               date:
