@@ -3,7 +3,6 @@
 const Koa = require('koa');
 const protect = require('koa-protect');
 const err = require('./middleware/error');
-const validator = require('./middleware/validator');
 const {routes, allowedMethods} = require('./middleware/routes');
 
 const app = new Koa();

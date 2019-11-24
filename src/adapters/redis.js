@@ -1,37 +1,20 @@
 'use strict';
 
 const redis = require('redis');
+const { promisify } = require('util');
 
 module.exports = class Redis {
     constructor() {
         this.client = null;
         this._connect();
+        this.set = promisify(this.client.set);
+        this.get = promisify(this.client.get);
     }
 
     _connect() {
         this.client = redis.createClient({
             host: process.env.REDIS_HOST,
             port: process.env.REDIS_PORT,
-        });
-    }
-
-    set(key, value, time) {
-        if (time) {
-            this.client.set(key, value, 'EX', time, this._handleError);
-        } else {
-            this.client.set(key, value, this._handleError);
-        }
-    }
-
-    get(key) {
-        return new Promise((res, rej) => {
-            this.client.get(key, (err, reply) => {
-                if (err) {
-                    rej(err);
-                } else {
-                    res(reply);
-                }
-            });
         });
     }
 
@@ -57,11 +40,5 @@ module.exports = class Redis {
 
     flushall() {
         this.client.flushall();
-    }
-
-    _handleError(e) {
-        if (e) {
-            console.error(e);
-        }
     }
 };

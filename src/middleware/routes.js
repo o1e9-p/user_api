@@ -17,8 +17,8 @@ const router = new Router();
 
 router
     .get('/books', async (ctx, next) => {
-        const result = await booksService.get(ctx.queryBuilder);
-        if (result) {
+        const result = await booksService.get(ctx.query);
+        if (result && result.length) {
             ctx.body = result;
         } else {
             ctx.status = 404;

@@ -16,9 +16,10 @@
     "uuid": "^3.3.3"
   },
   "devDependencies": {
+    "chai": "4.2.0",
     "eslint": "^6.7.0",
     "eslint-plugin-deprecate": "^0.7.0",
-    "chai": "4.2.0",
+    "husky": "^3.1.0",
     "mocha": "6.1.4"
   },
   "scripts": {
@@ -27,7 +28,9 @@
     "db": "npm run build && node ./dist/models/product.js",
     "prettier": "prettier --config .prettierrc --ignore-path .eslintignore --write ./src/**/*.js",
     "lint": "eslint --fix ./src/**/*.js",
-    "check-all": "npm run prettier && npm run lint"
+    "check-all": "npm run prettier && npm run lint",
+    "precommit":"npm run check-all",
+    "prepush": "npm run test"
   },
   "author": "",
   "license": "ISC"

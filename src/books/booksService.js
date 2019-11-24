@@ -9,7 +9,10 @@ module.exports = class BooksService {
     constructor(db) {
         this.db = db;
         this.authorService = new AuthorService(db);
-        this.queryBuilder = new QueryBuilder(this.db.escape);
+        this.queryBuilder = new QueryBuilder({
+            escape: db.escape,
+            escapeId: db.escapeId,
+        });
     }
 
     async get(data) {
@@ -52,14 +55,18 @@ module.exports = class BooksService {
 
     async update(id, params) {
         const queries = this.queryBuilder.update(id, params);
+        const transaction = new Transaction(this.db);
+
         try {
             let result;
-            await this._startTransactionQuery();
+
+            await transaction.start();
             for (const query of queries) {
                 result = await this.db.query(query);
             }
-            await this._finishTransactionQuery();
-            return new BookDTO(result[0]);
+            await transaction.stop();
+
+            return result.length ? new BookDTO(result[0]) : null;
         } catch (e) {
             console.error(e);
             throw e;
@@ -92,8 +99,9 @@ class Transaction {
 }
 
 class QueryBuilder {
-    constructor(escape) {
+    constructor({ escape, escapeId }) {
         this.escape = escape;
+        this.escapeId = escapeId;
     }
     insertAuthorAndBook(book, { firstName, lastName }) {
         const lastInsertId = 'LAST_INSERT_ID()';
@@ -151,30 +159,31 @@ class QueryBuilder {
         let query = 'UPDATE books SET ';
 
         if (typeof title === 'string') {
-            query += `title = '${this.escape(title)}', `;
+            query += `title = ${this.escape(title)}, `;
         }
         if (typeof date === 'string') {
-            query += `date = '${this.escape(date)}', `;
+            query += `date = ${this.escape(date)}, `;
         }
         if (typeof authorFirstName === 'string') {
-            query += `first_name = '${this.escape(authorFirstName)}', `;
+            query += `first_name = ${this.escape(authorFirstName)}, `;
         }
         if (typeof authorLastName === 'string') {
-            query += `last_name = '${this.escape(authorLastName)}', `;
+            query += `last_name = ${this.escape(authorLastName)}, `;
         }
         if (typeof description === 'string') {
-            query += `description = '${this.escape(description)}', `;
+            query += `description = ${this.escape(description)}, `;
         }
         if (typeof image === 'string') {
-            query += `image = '${this.escape(image)}', `;
+            query += `image = ${this.escape(image)}, `;
         }
 
         query = query.substring(0, query.length - 2);
-        query += ` WHERE id = '${this.escape(id)}';`;
+        query += ` WHERE id = ${this.escape(id)};`;
 
         return [
             query,
-            `SELECT * FROM books INNER JOIN authors on books.author = authors.id WHERE books.id = ${this.escape(id)};`,
+            'SELECT b.id, title, date, author, description, image, first_name, last_name ' +
+        `FROM books as b INNER JOIN authors as a on b.author = a.id WHERE b.id = ${this.escape(id)};`,
         ];
     }
 
@@ -191,7 +200,8 @@ class QueryBuilder {
             fields[index] = 'last_name';
         }
 
-        const escapedFields = fields.map(field => this.escape(field));
+        const escapedFields = fields.map(field => this.escapeId(field));
+        console.log(escapedFields);
         str += Array.isArray(escapedFields) ? escapedFields.join(', ') : escapedFields;
 
         return str;
@@ -201,14 +211,14 @@ class QueryBuilder {
         let str = '';
 
         if (typeof title === 'string') {
-            str += `title = '${this.escape(title)}', `;
+            str += `title = ${this.escape(title)}, `;
         }
 
         if (typeof date === 'string') {
             const ex = date.replace(/[^<>=]+/g, '');
 
             if (!date.replace(/[0-9,\-\s<>=]+/g, '')) {
-                str += `date ${ex.length ? ex : '='} '${this.escape(date.substring(ex.length).trim())}', `;
+                str += `date ${ex.length ? ex : '='} ${this.escape(date.substring(ex.length).trim())}, `;
             } else {
                 throw new Error('wrong date field ');
             }
@@ -216,7 +226,7 @@ class QueryBuilder {
 
         if (typeof authorFirstName === 'string') {
             if (!authorFirstName.replace(/[a-zA-Z,\s<>=]+/g, '')) {
-                str += `authors.first_name = '${this.escape(authorFirstName)}', `;
+                str += `authors.first_name = ${this.escape(authorFirstName)}, `;
             } else {
                 throw new Error('wrong authorFirstName field ');
             }
@@ -224,18 +234,18 @@ class QueryBuilder {
 
         if (typeof authorLastName === 'string') {
             if (!authorFirstName.replace(/[a-zA-Z,\s<>=]+/g, '')) {
-                str += `authors.lsat_name = '${this.escape(authorLastName)}', `;
+                str += `authors.lsat_name = ${this.escape(authorLastName)}, `;
             } else {
                 throw new Error('wrong authorLastName field ');
             }
         }
 
         if (typeof description === 'string') {
-            str += `description = '${this.escape(description)}', `;
+            str += `description = ${this.escape(description)}, `;
         }
 
         if (typeof image === 'string') {
-            str += `image = '${this.escape(image)}', `;
+            str += `image = ${this.escape(image)}, `;
         }
 
         str = str.substring(0, str.length - 2) + ' ';
@@ -245,10 +255,10 @@ class QueryBuilder {
 
     _addSort(sort) {
         if (sort[0] === '-') {
-            return `ORDER BY ${this.escape(sort.substring(1))} DESC `;
+            return `ORDER BY ${this.escapeId(sort.substring(1))} DESC `;
         }
 
-        return `ORDER BY ${this.escape(sort)} `;
+        return `ORDER BY ${this.escapeId(sort)} `;
     }
 
     static _addLimitOffset(limit = '100', offset = '0') {
