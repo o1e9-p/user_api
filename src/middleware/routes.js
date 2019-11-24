@@ -1,22 +1,19 @@
 'use strict';
 
 const Router = require('koa-router');
-const Redis = require('../adapters/redis');
 const convert = require('koa-convert');
 const KoaBody = require('koa-body');
-const Cache = require('./cache');
-const { getHandler, insertHandler, updateHandler, deleteBookHandler, deleteAuthorHandler } = require('./handelers');
+const { getHandler, insertHandler, updateHandler, deleteBookHandler, deleteAuthorHandler } = require('./handlers');
 
 const koaBody = convert(KoaBody());
 const router = new Router();
-const cache = new Cache(Redis.getInstance());
 
 router
-    .get('/books', cache.getIfExist, cache.deleteReq, getHandler, cache.set)
-    .post('/books', koaBody, insertHandler, cache.set)
-    .post('/books/:id', koaBody, updateHandler, cache.set)
-    .delete('/books/:id', deleteBookHandler, cache.deleteBook)
-    .delete('/author/:id', deleteAuthorHandler, cache.deleteAuthor);
+    .get('/books', getHandler)
+    .post('/books', koaBody, insertHandler)
+    .post('/books/:id', koaBody, updateHandler)
+    .delete('/books/:id', deleteBookHandler)
+    .delete('/author/:id', deleteAuthorHandler);
 
 exports.routes = function routes() {
     return router.routes();

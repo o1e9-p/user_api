@@ -26,12 +26,4 @@ module.exports = class BookDTO {
             this.image = image;
         }
     }
-
-    static fromEntities(entities) {
-        return entities.map(entity => new BookDTO(entity));
-    }
-
-    static fromEntity(entity) {
-        return new BookDTO(entity);
-    }
 };
