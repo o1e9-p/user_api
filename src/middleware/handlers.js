@@ -1,7 +1,7 @@
 'use strict';
 
 const AuthorService = require('../author/authorService');
-const BooksService = require('../books/booksService');
+const BooksService = require('../book/bookService');
 const Mysql = require('../adapters/mySql');
 
 const booksService = new BooksService(Mysql.getInstance());

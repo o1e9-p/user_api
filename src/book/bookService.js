@@ -5,7 +5,7 @@ const BookDTO = require('./DTO');
 const AuthorEntity = require('../author/entity');
 const AuthorService = require('../author/authorService');
 
-module.exports = class BooksService {
+module.exports = class BookService {
     constructor(db) {
         this.db = db;
         this.authorService = new AuthorService(db);
@@ -45,7 +45,6 @@ module.exports = class BooksService {
             }
 
             await transaction.stop();
-            console.log(result[0]);
             return new BookDTO(result[0]);
         } catch (e) {
             console.error(e);
@@ -74,7 +73,7 @@ module.exports = class BooksService {
     }
 
     async delete(id) {
-        const query = `DELETE FROM books WHERE id = ${id}`;
+        const query = this.queryBuilder.delete(id);
         try {
             await this.db.query(query);
         } catch (e) {
@@ -187,6 +186,10 @@ class QueryBuilder {
         ];
     }
 
+    delete(id) {
+        return `DELETE FROM books WHERE id = ${this.escape(id)}`
+    }
+
     _addFields(fields) {
         let str = 'books.id, ';
         let index = fields.indexOf('authorFirstName');
@@ -201,7 +204,6 @@ class QueryBuilder {
         }
 
         const escapedFields = fields.map(field => this.escapeId(field));
-        console.log(escapedFields);
         str += Array.isArray(escapedFields) ? escapedFields.join(', ') : escapedFields;
 
         return str;
