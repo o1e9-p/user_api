@@ -187,7 +187,7 @@ class QueryBuilder {
     }
 
     delete(id) {
-        return `DELETE FROM books WHERE id = ${this.escape(id)}`
+        return `DELETE FROM books WHERE id = ${this.escape(id)}`;
     }
 
     _addFields(fields) {
