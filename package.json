@@ -29,8 +29,7 @@
     "prettier": "prettier --config .prettierrc --ignore-path .eslintignore --write ./src/**/*.js",
     "lint": "eslint --fix ./src/**/*.js",
     "check-all": "npm run prettier && npm run lint",
-    "precommit":"npm run check-all",
-    "prepush": "npm run test"
+    "precommit":"npm run check-all"
   },
   "author": "",
   "license": "ISC"
